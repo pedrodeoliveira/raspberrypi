@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import os
 import datetime
 import time
 import jwt
@@ -11,11 +12,11 @@ import board
 # define some project-based variables to be used below
 ssl_private_key_filepath = '/home/pi/demo_private.pem'
 ssl_algorithm = 'RS256'
-root_cert_filepath = '<root-certificate-filepath>'
-project_id = '<GCP project id>'
-gcp_location = '<GCP location>'
-registry_id = '<IoT Core registry id>'
-device_id = '<IoT Core device id>'
+root_cert_filepath = '/home/pi/.ssh/roots.pem'
+project_id = os.getenv('GCP_PROJECT_ID')
+gcp_location = 'europe-west1'
+registry_id = os.getenv('REGISTRY_ID')
+device_id = os.getenv('DEVICE_ID')
 
 
 cur_time = datetime.datetime.utcnow()
@@ -32,8 +33,8 @@ def create_jwt():
 
   return jwt.encode(token, private_key, ssl_algorithm)
 
-_CLIENT_ID = 'projects/{}/locations/{}/registries/{}/devices/{}'.format(project_id, gcp_location, registry_id, device_id)
-_MQTT_TOPIC = '/devices/{}/events'.format(device_id)
+_CLIENT_ID = f'projects/{project_id}/locations/{gcp_location}/registries/{registry_id}/devices/{device_id}'
+_MQTT_TOPIC = f'/devices/{device_id}/events'
 
 client = mqtt.Client(client_id=_CLIENT_ID)
 
@@ -60,7 +61,7 @@ client.connect('mqtt.googleapis.com', 8883)
 client.loop_start()
 
 # define temperature and humidity sensor
-dht = adafruit_dht.DHT11(board.D11, use_pulseio=False)
+dht = adafruit_dht.DHT11(board.D22)
 
 while True:
     try:
@@ -71,11 +72,10 @@ while True:
         payload = '{{ "ts": {}, "temperature": {}, "humidity": {} }}'.format(
           int(time.time()), temperature, humidity)
 
-        # Uncomment following line when ready to publish
-        #  client.publish(_MQTT_TOPIC, payload, qos=1)
+        client.publish(_MQTT_TOPIC, payload, qos=1)
         print("{}\n".format(payload))
     except RuntimeError as error:
-        # Errors happen fairly often, DHT's are hard to read, just keep going
+        # Errors happen fairly often, DHT'zxs are hard to read, just keep going
         print(error.args[0])
         time.sleep(2.0)
         continue
